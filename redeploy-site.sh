@@ -1,13 +1,36 @@
-tmux kill-server
+kill_previous_service() {
+    systemctl stop myportfolio || { printf "Failed to stop myportfolio service.\n" >&2; return 1; }
+}
 
-cd /root/redeploy_script
-cd ../MLH-Portfolio || { echo "Project directory /root/MLH-Portfolio not found."; exit 1; }
+navigate_to_project_directory() {
+    cd /root/MLH-Portfolio || { printf "Project directory /root/MLH-Portfolio not found.\n" >&2; return 1; }
+}
 
-git fetch && git reset origin/main --hard || { echo "Git fetch or reset failed."; exit 1; }
+update_git_repository() {
+    git fetch && git reset origin/main --hard || { printf "Git fetch or reset failed.\n" >&2; return 1; }
+}
 
-source python3-virtualenv/bin/activate || { echo "Virtual environment activation failed."; exit 1; }
-pip install -r requirements.txt || { echo "Pip install failed."; exit 1; }
+activate_virtualenv() {
+    source python3-virtualenv/bin/activate || { printf "Virtual environment activation failed.\n" >&2; return 1; }
+}
 
-tmux new-session -d -s flask_server "cd /root/MLH-Portfolio && source python3-virtualenv/bin/activate && flask run --host=0.0.0.0 --port=5000" || { echo "Failed to start tmux session."; exit 1; }
+install_dependencies() {
+    pip install -r requirements.txt || { printf "Pip install failed.\n" >&2; return 1; }
+}
 
-echo "Deployment script executed successfully."
+restart_service() {
+    systemctl daemon-reload || { printf "Failed to reload systemd manager configuration.\n" >&2; return 1; }
+    systemctl restart myportfolio || { printf "Failed to restart myportfolio service.\n" >&2; return 1; }
+}
+
+main() {
+    kill_previous_service || exit 1
+    navigate_to_project_directory || exit 1
+    update_git_repository || exit 1
+    activate_virtualenv || exit 1
+    install_dependencies || exit 1
+    restart_service || exit 1
+    printf "Deployment script executed successfully.\n"
+}
+
+main "$@"
